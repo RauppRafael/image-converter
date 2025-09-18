@@ -1,41 +1,47 @@
-import fs from 'fs'
+import { ImageHandler } from './src/ImageHandler'
 import path from 'path'
-import sharp from 'sharp'
+import inquirer from 'inquirer'
 
-const inputDir = './inputs'
-const outputDir = './outputs'
+async function main() {
+    const answers = await inquirer.prompt([
+        {
+            type: 'list',
+            name: 'operation',
+            message: 'Which operation do you want to run?',
+            choices: [
+                { name: 'Convert Images to WebP', value: 'toWebp' },
+                { name: 'Compress Images', value: 'compress' },
+            ],
+        },
+        {
+            type: 'input',
+            name: 'inputDir',
+            message: 'Enter the input directory path:',
+            default: './inputs',
+        },
+        {
+            type: 'input',
+            name: 'outputDir',
+            message: 'Enter the output directory path:',
+            default: './outputs',
+        },
+    ])
 
-async function convertFolder(srcDir: string, destDir: string): Promise<void> {
-    // Ensure destination folder exists
-    if (!fs.existsSync(destDir)) 
-        fs.mkdirSync(destDir, { recursive: true })
+    const handler = new ImageHandler(
+        path.resolve(answers.inputDir),
+        path.resolve(answers.outputDir),
+    )
 
-    const entries = fs.readdirSync(srcDir, { withFileTypes: true })
-
-    for (const entry of entries) {
-        const srcPath = path.join(srcDir, entry.name)
-        const destPath = path.join(destDir, entry.name)
-
-        if (entry.isDirectory()) {
-            // Recursively handle subfolder
-            await convertFolder(srcPath, destPath)
-        }
-        else if (entry.isFile() && /\.(jpe?g)$/i.test(entry.name)) {
-            const outFile = destPath.replace(/\.(jpe?g)$/i, '.webp')
-
-            try {
-                await sharp(srcPath)
-                    .webp({ quality: 90 }) // or { quality: 100 } if you want near-lossless smaller files
-                    .toFile(outFile)
-
-                console.log(`Converted: ${ srcPath } → ${ outFile }`)
-            }
-            catch (err) {
-                console.error(`Error converting ${ srcPath }:`, err)
-            }
-        }
+    switch (answers.operation) {
+        case 'toWebp':
+            await handler.toWebp()
+            break
+        case 'compress':
+            await handler.compress()
+            break
     }
+
+    console.log('✅ Done!')
 }
 
-convertFolder(inputDir, outputDir)
-    .catch(err => console.error('Unexpected error:', err))
+main()
