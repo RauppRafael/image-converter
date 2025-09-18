@@ -2,10 +2,12 @@ import fs from 'fs'
 import path from 'path'
 import sharp from 'sharp'
 
-const supportedFormats = ['jpeg', 'png', 'webp', 'tiff', 'avif', 'gif'] as const
-const imageRegex = new RegExp(`\\.(${ supportedFormats.join('|') })$`, 'i')
+const supportedImageExtension = ['jpeg', 'png', 'webp', 'tiff', 'avif', 'gif'] as const
 
-type ImageFormat = typeof supportedFormats[number]
+// adds jpg as alias for jpeg
+const imageRegex = new RegExp(`\\.(${ [...supportedImageExtension, 'jpg'].join('|') })$`, 'i')
+
+type SupportedImageExtension = typeof supportedImageExtension[number]
 
 export class ImageHandler {
     public constructor(
@@ -19,11 +21,16 @@ export class ImageHandler {
             this.inputDirectory,
             this.outputDirectory,
             async (srcPath, destPath) => {
-                const outputFile = destPath.replace(/\.(jpe?g)$/i, '.webp')
+                const outputFile = path.join(
+                    path.dirname(destPath),
+                    path.basename(destPath, path.extname(destPath)) + '.webp',
+                )
 
                 await sharp(srcPath)
                     .webp({ quality: 90 })
                     .toFile(outputFile)
+
+                return outputFile
             },
         )
     }
@@ -38,11 +45,13 @@ export class ImageHandler {
                 if (extension === 'jpg')
                     extension = 'jpeg'
 
-                if (!supportedFormats.includes(extension as ImageFormat))
+                if (!supportedImageExtension.includes(extension as SupportedImageExtension))
                     throw new Error(`Unsupported image format: ${ extension }`)
 
-                await sharp(srcPath)[extension as ImageFormat]({ quality: 90 })
+                await sharp(srcPath)[extension as SupportedImageExtension]({ quality: 90 })
                     .toFile(destPath)
+
+                return destPath
             },
         )
     }
@@ -50,7 +59,7 @@ export class ImageHandler {
     private async processDirectory(
         srcDir: string,
         destDir: string,
-        callback: (srcPath: string, outputFile: string) => Promise<void>,
+        callback: (srcPath: string, outputFile: string) => Promise<string>,
     ) {
         // Ensure destination folder exists
         if (!fs.existsSync(destDir))
@@ -68,13 +77,16 @@ export class ImageHandler {
             }
             else if (entry.isFile() && imageRegex.test(entry.name)) {
                 try {
-                    await callback(srcPath, destPath)
+                    const outputFile = await callback(srcPath, destPath)
 
-                    console.log(`Converted: ${ srcPath } → ${ destPath }`)
+                    console.log(`Converted: ${ srcPath } → ${ outputFile }`)
                 }
                 catch (err) {
                     console.error(`Error converting ${ srcPath }:`, err)
                 }
+            }
+            else {
+                console.error(`Unable to process unsupported file: ${ entry.name }: ${ entry.name }`)
             }
         }
     }
