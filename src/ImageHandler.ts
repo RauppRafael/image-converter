@@ -85,6 +85,9 @@ export class ImageHandler {
                     console.error(`Error converting ${ srcPath }:`, err)
                 }
             }
+            else if (entry.name === '.gitkeep') {
+                // ignore .gitkeep files
+            }
             else {
                 console.error(`Unable to process unsupported file: ${ entry.name }: ${ entry.name }`)
             }
