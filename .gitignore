@@ -1,7 +1,18 @@
 node_modules
+dist
 
+# Working directories (input/output scratch)
 inputs/*
 outputs/*
-.idea/*
 
 !.gitkeep
+
+# IDE / editor
+.idea/
+.vscode/
+
+# Claude Code local settings
+.claude/
+
+# Test artifacts
+coverage/
